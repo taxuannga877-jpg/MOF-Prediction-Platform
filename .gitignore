@@ -56,9 +56,14 @@ logs/
 # models/*.pth
 # models/*.pkl
 
-# Data (uncomment if data files are too large)
-# data/raw/
-# data/processed/
+# Data (QMOF database and processed files - too large for git)
+data/raw/
+data/processed/
+*.cif
+*.csv
+*.pkl
+*.h5
+*.hdf5
 
 # Temporary files
 *.tmp
