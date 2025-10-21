@@ -35,7 +35,11 @@ if 'predictions' not in st.session_state:
 
 # 侧边栏
 with st.sidebar:
-    st.image(str(ASSETS_DIR / "logo.png") if (ASSETS_DIR / "logo.png").exists() else None)
+    # 显示 logo（如果存在）
+    logo_path = ASSETS_DIR / "logo.png"
+    if logo_path.exists():
+        st.image(str(logo_path))
+    
     st.title("🧪 MOF预测平台")
     st.markdown("---")
     
