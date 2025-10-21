@@ -171,7 +171,7 @@ class ModelRouter:
                 recommendations['confidence'] = 0.85
         
         # 基于数据内容
-        elif data:
+        elif data is not None:
             if isinstance(data, pd.DataFrame):
                 # 检查是否有MOFid列
                 mofid_columns = ['mofid', 'mof_id', 'smiles']
