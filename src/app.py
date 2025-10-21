@@ -152,9 +152,11 @@ elif page == "📂 数据管理":
     with tab2:
         st.markdown("### QMOF数据集")
         
+        st.info("💡 **训练推荐**：选择 **'qmof.csv（表格格式）'** 以获得最佳兼容性")
+        
         qmof_source = st.selectbox(
             "选择QMOF数据源",
-            ["qmof.json（属性数据）", "qmof.csv（表格格式）", 
+            ["qmof.csv（表格格式）", "qmof.json（属性数据）", 
              "结构数据（CIF）", "完整结构数据（JSON）"]
         )
         
@@ -306,11 +308,44 @@ elif page == "🤖 模型训练":
                 with st.spinner("⏳ 准备训练数据..."):
                     data_processor = DataProcessor()
                     
+                    # 转换数据为 DataFrame（如果需要）
+                    if not isinstance(data, pd.DataFrame):
+                        st.info("📊 检测到非表格数据，正在转换为 DataFrame...")
+                        
+                        if isinstance(data, dict):
+                            # 如果是字典格式，尝试转换
+                            if all(isinstance(v, dict) for v in data.values()):
+                                # {id: {prop1: val1, prop2: val2, ...}} 格式
+                                data = pd.DataFrame.from_dict(data, orient='index')
+                                data.index.name = 'qmof_id'
+                                data.reset_index(inplace=True)
+                                st.success(f"✅ 已转换为 DataFrame，共 {len(data)} 行")
+                            else:
+                                # 尝试直接转换
+                                data = pd.DataFrame([data])
+                        
+                        elif isinstance(data, list):
+                            # 如果是列表格式
+                            if data and isinstance(data[0], dict):
+                                data = pd.DataFrame(data)
+                                st.success(f"✅ 已转换为 DataFrame，共 {len(data)} 行")
+                            else:
+                                st.error("❌ 无法将列表数据转换为 DataFrame")
+                                st.stop()
+                        
+                        else:
+                            st.error(f"❌ 不支持的数据类型: {type(data).__name__}")
+                            st.warning("💡 建议：请在【数据管理】页面选择 **'qmof.csv（表格格式）'** 数据源")
+                            st.stop()
+                        
+                        # 更新 session state
+                        st.session_state.data = data
+                    
                     # 根据数据类型和模型类型准备数据
                     if model_choice in ["CGCNN", "集成模型"]:
-                        # CGCNN 需要结构数据
+                        # CGCNN 需要表格数据
                         if not isinstance(data, pd.DataFrame):
-                            st.error("❌ CGCNN 模型需要 DataFrame 格式的数据，请重新加载数据")
+                            st.error("❌ 数据格式错误，请重新加载数据")
                             st.stop()
                         
                         # 检查是否有目标属性
