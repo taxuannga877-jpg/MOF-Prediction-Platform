@@ -105,47 +105,66 @@ TRAINING_CONFIG = {
 # Prediction Task Configuration
 
 SUPPORTED_PROPERTIES = {
-    "bandgap": {
-        "name": "能带隙 (Band Gap)",
+    # QMOF CSV 实际列名（匹配数据库）
+    "outputs.pbe.bandgap": {
+        "name": "能带隙 (PBE Band Gap)",
         "unit": "eV",
         "type": "regression",
-        "description": "材料的电子能带隙",
+        "description": "PBE泛函计算的电子能带隙",
     },
-    "cbm": {
+    "outputs.hse06.bandgap": {
+        "name": "能带隙 (HSE06 Band Gap)",
+        "unit": "eV",
+        "type": "regression",
+        "description": "HSE06泛函计算的电子能带隙",
+    },
+    "outputs.pbe.cbm": {
         "name": "导带最小值 (CBM)",
         "unit": "eV",
         "type": "regression",
         "description": "导带最小值",
     },
-    "vbm": {
+    "outputs.pbe.vbm": {
         "name": "价带最大值 (VBM)",
         "unit": "eV",
         "type": "regression",
         "description": "价带最大值",
     },
-    "pld": {
+    "info.pld": {
         "name": "孔限制直径 (PLD)",
         "unit": "Å",
         "type": "regression",
         "description": "孔隙限制直径",
     },
-    "lcd": {
+    "info.lcd": {
         "name": "最大腔体直径 (LCD)",
         "unit": "Å",
         "type": "regression",
         "description": "最大腔体直径",
     },
-    "density": {
+    "info.density": {
         "name": "密度",
         "unit": "g/cm³",
         "type": "regression",
         "description": "材料密度",
     },
-    "energy_total": {
-        "name": "总能量",
+    "outputs.pbe.energy_total": {
+        "name": "总能量 (PBE)",
         "unit": "eV",
         "type": "regression",
-        "description": "DFT计算的总能量",
+        "description": "PBE泛函计算的总能量",
+    },
+    "info.volume": {
+        "name": "晶胞体积",
+        "unit": "Å³",
+        "type": "regression",
+        "description": "晶胞体积",
+    },
+    "info.natoms": {
+        "name": "原子数",
+        "unit": "个",
+        "type": "regression",
+        "description": "晶胞中的原子总数",
     },
 }
 
