@@ -273,3 +273,143 @@ def plot_shap_feature_importance(importance_df, top_k=20, save_path: Optional[st
     
     return fig
 
+
+def create_shap_analysis(model, X_test, feature_names=None, max_display=20, sample_size=100):
+    """
+    创建SHAP分析可视化（专门为Streamlit优化）
+    
+    Args:
+        model: 训练好的模型（可以是sklearn模型对象）
+        X_test: 测试数据（numpy数组或DataFrame）
+        feature_names: 特征名称列表
+        max_display: 最多显示的特征数
+        sample_size: 用于计算的样本数
+    
+    Returns:
+        matplotlib figure 或 None
+    """
+    try:
+        # 转换为DataFrame
+        if not isinstance(X_test, pd.DataFrame):
+            if feature_names is not None:
+                X_test_df = pd.DataFrame(X_test, columns=feature_names)
+            else:
+                X_test_df = pd.DataFrame(X_test, columns=[f'Feature_{i}' for i in range(X_test.shape[1])])
+        else:
+            X_test_df = X_test
+        
+        if feature_names is None:
+            feature_names = X_test_df.columns.tolist()
+        
+        # 限制样本数以加快计算
+        if len(X_test_df) > sample_size:
+            X_sample = X_test_df.sample(n=sample_size, random_state=42)
+        else:
+            X_sample = X_test_df
+        
+        # 根据模型类型选择合适的SHAP Explainer
+        from sklearn.ensemble import (
+            RandomForestRegressor, GradientBoostingRegressor,
+            ExtraTreesRegressor, AdaBoostRegressor
+        )
+        try:
+            from xgboost import XGBRegressor
+            has_xgboost = True
+        except ImportError:
+            has_xgboost = False
+        
+        try:
+            from lightgbm import LGBMRegressor
+            has_lightgbm = True
+        except ImportError:
+            has_lightgbm = False
+        
+        try:
+            from catboost import CatBoostRegressor
+            has_catboost = True
+        except ImportError:
+            has_catboost = False
+        
+        # TreeExplainer支持的树模型（不包括AdaBoost，因为SHAP不直接支持）
+        tree_explainer_models = [
+            RandomForestRegressor, 
+            GradientBoostingRegressor,
+            ExtraTreesRegressor
+        ]
+        
+        if has_xgboost:
+            tree_explainer_models.append(XGBRegressor)
+        if has_lightgbm:
+            tree_explainer_models.append(LGBMRegressor)
+        if has_catboost:
+            tree_explainer_models.append(CatBoostRegressor)
+        
+        tree_explainer_models = tuple(tree_explainer_models)
+        
+        # 选择合适的explainer
+        if isinstance(model, tree_explainer_models):
+            # 对于TreeExplainer支持的树模型，使用TreeExplainer（速度更快）
+            try:
+                explainer = shap.TreeExplainer(model)
+                shap_values = explainer.shap_values(X_sample)
+            except Exception as e:
+                # 如果TreeExplainer失败，降级到通用Explainer
+                print(f"TreeExplainer失败，使用通用Explainer: {e}")
+                explainer = shap.Explainer(model.predict, X_sample)
+                shap_values = explainer(X_sample)
+        elif isinstance(model, AdaBoostRegressor):
+            # AdaBoost需要特殊处理，使用通用Explainer
+            try:
+                # 首先尝试使用通用Explainer（较快）
+                explainer = shap.Explainer(model.predict, X_sample)
+                shap_values = explainer(X_sample)
+            except:
+                # 如果失败，使用KernelExplainer（较慢但更通用）
+                print("使用KernelExplainer处理AdaBoost...")
+                background = shap.sample(X_sample, min(50, len(X_sample)))
+                explainer = shap.KernelExplainer(model.predict, background)
+                shap_values = explainer.shap_values(X_sample)
+        else:
+            # 对于其他模型，使用通用Explainer
+            try:
+                explainer = shap.Explainer(model.predict, X_sample)
+                shap_values = explainer(X_sample)
+            except:
+                # 如果失败，使用KernelExplainer（较慢但通用）
+                print("使用KernelExplainer...")
+                background = shap.sample(X_sample, min(50, len(X_sample)))
+                explainer = shap.KernelExplainer(model.predict, background)
+                shap_values = explainer.shap_values(X_sample)
+        
+        # 创建summary plot
+        fig, ax = plt.subplots(figsize=(12, max(6, max_display * 0.3)))
+        
+        # 根据shap_values的类型选择绘图方式
+        if hasattr(shap_values, 'values'):
+            # 新版SHAP (Explanation对象)
+            shap.summary_plot(
+                shap_values.values,
+                X_sample,
+                feature_names=feature_names,
+                max_display=max_display,
+                show=False
+            )
+        else:
+            # 旧版SHAP (numpy数组)
+            shap.summary_plot(
+                shap_values,
+                X_sample,
+                feature_names=feature_names,
+                max_display=max_display,
+                show=False
+            )
+        
+        plt.tight_layout()
+        return fig
+        
+    except Exception as e:
+        print(f"❌ SHAP分析失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
+

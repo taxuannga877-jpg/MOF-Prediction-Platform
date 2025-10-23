@@ -62,7 +62,11 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📈 系统状态")
     st.info(f"数据已加载: {'✅' if st.session_state.data_loaded else '❌'}")
-    st.info(f"模型已训练: {'✅' if st.session_state.model and st.session_state.model.is_trained else '❌'}")
+    # 检查模型是否训练（兼容不同模型类型）
+    model_trained = False
+    if st.session_state.model:
+        model_trained = getattr(st.session_state.model, 'is_trained', False) or getattr(st.session_state.model, 'model', None) is not None
+    st.info(f"模型已训练: {'✅' if model_trained else '❌'}")
 
 # 主页
 if page == "🏠 主页":
@@ -321,8 +325,8 @@ elif page == "🤖 模型训练":
         )
         
         if model_category == "🧠 深度学习模型":
-        model_choice = st.selectbox(
-            "模型类型",
+            model_choice = st.selectbox(
+                "模型类型",
                 ["CGCNN", "MOFormer"],
                 index=["cgcnn", "moformer"].index(recommendation['primary']) if recommendation['primary'] in ["cgcnn", "moformer"] else 0
             )
@@ -387,7 +391,7 @@ elif page == "🤖 模型训练":
         
         with col_a:
             # 🔥 使用实际数据中的列名，而不是硬编码的属性
-        property_choice = st.selectbox(
+            property_choice = st.selectbox(
                 "选择要预测的目标列（从您的数据中）",
                 st.session_state.numeric_columns,
                 help="这些是您数据中的所有数值型列，您可以选择任意一个作为预测目标"
@@ -466,7 +470,7 @@ elif page == "🤖 模型训练":
                         st.session_state.data = data
                     
                     # 根据数据类型和模型类型准备数据
-                    if model_category == "🌲 传统机器学习模型" or "ML集成" in str(model_choice):
+                    if (model_category == "🌲 传统机器学习模型") or (model_category == "🎯 集成模型" and "ML集成" in str(model_choice)):
                         # 传统ML模型使用表格数据
                         if not isinstance(data, pd.DataFrame):
                             st.error("❌ 传统ML模型需要表格数据格式")
@@ -642,11 +646,11 @@ elif page == "🤖 模型训练":
                         model = MOFormerModel(config)
                         model.build_model()
                         st.success("✅ 模型构建完成！")
-                    else:
+                    else:  # Deep Learning Ensemble
                         config = ENSEMBLE_CONFIG.copy()
                         model = EnsembleModel(config)
-                    model.build_model()
-                    st.success("✅ 模型构建完成！")
+                        model.build_model()
+                        st.success("✅ 模型构建完成！")
                 
                 # 开始训练
                 st.markdown("### 📈 训练进度")
@@ -661,7 +665,7 @@ elif page == "🤖 模型训练":
                     st.write("🔄 开始训练...")
                     
                     # 传统ML模型训练
-                    if model_category == "🌲 传统机器学习模型" or "ML集成" in str(model_choice):
+                    if (model_category == "🌲 传统机器学习模型") or (model_category == "🎯 集成模型" and "ML集成" in str(model_choice)):
                         st.write(f"🚀 开始训练 {model_choice} 模型...")
                         import time
                         start_time = time.time()
@@ -695,10 +699,17 @@ elif page == "🤖 模型训练":
                         rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
                         r2 = r2_score(y_test, y_test_pred)
                         
-                        st.write(f"📊 测试集性能:")
-                        st.write(f"   MAE:  {mae:.4f}")
-                        st.write(f"   RMSE: {rmse:.4f}")
-                        st.write(f"   R²:   {r2:.4f}")
+                        # 显示性能指标
+                        col_metric1, col_metric2, col_metric3, col_metric4 = st.columns(4)
+                        with col_metric1:
+                            st.metric("R² Score", f"{r2:.4f}", help="决定系数，越接近1越好")
+                        with col_metric2:
+                            st.metric("MAE", f"{mae:.4f}", help="平均绝对误差，越小越好")
+                        with col_metric3:
+                            st.metric("RMSE", f"{rmse:.4f}", help="均方根误差，越小越好")
+                        with col_metric4:
+                            mape = np.mean(np.abs((y_test - y_test_pred) / y_test)) * 100 if np.all(y_test != 0) else 0
+                            st.metric("MAPE", f"{mape:.2f}%", help="平均绝对百分比误差")
                         
                         # 保存特征重要性
                         feature_importance = model.get_feature_importance()
@@ -713,20 +724,123 @@ elif page == "🤖 模型训练":
                         val_score = model.history['val_scores'][0] if model.history['val_scores'] else r2
                         
                         history = {
-                            'train_loss': [1 - train_score],  # 转换为loss
+                            'train_loss': [1 - train_score],
                             'val_loss': [1 - val_score],
                             'train_r2': [train_score],
                             'val_r2': [val_score]
                         }
+                        st.session_state.training_history = history
                         
                         progress_bar.progress(100)
+                        
+                        # 🔥 训练完成后立即展示完整结果分析
+                        st.markdown("---")
+                        st.markdown("## 📊 训练结果分析")
+                        
+                        # 导入可视化函数
+                        from src.visualization import (
+                            plot_predictions_scatter,
+                            plot_residuals,
+                            plot_error_distribution,
+                            plot_feature_importance_bar,
+                            create_shap_analysis
+                        )
+                        
+                        # 1. 预测结果对比
+                        st.markdown("### 🎯 预测结果对比")
+                        col_pred1, col_pred2 = st.columns(2)
+                        
+                        with col_pred1:
+                            st.plotly_chart(
+                                plot_predictions_scatter(y_test, y_test_pred, '测试集'),
+                                use_container_width=True
+                            )
+                        
+                        with col_pred2:
+                            st.plotly_chart(
+                                plot_residuals(y_test, y_test_pred),
+                                use_container_width=True
+                            )
+                        
+                        # 2. 误差分析
+                        st.markdown("### 📉 误差分析")
+                        st.plotly_chart(
+                            plot_error_distribution(y_test, y_test_pred),
+                            use_container_width=True
+                        )
+                        
+                        # 3. 特征重要性
+                        if feature_importance is not None:
+                            st.markdown("### 🎯 特征重要性分析")
+                            st.plotly_chart(
+                                plot_feature_importance_bar(feature_importance, feature_cols),
+                                use_container_width=True
+                            )
+                            
+                            # Top 10 最重要特征
+                            top_n = min(10, len(feature_cols))
+                            top_indices = np.argsort(feature_importance)[-top_n:][::-1]
+                            
+                            st.markdown(f"#### 🏆 Top {top_n} 最重要特征")
+                            importance_df = pd.DataFrame({
+                                '特征名称': [feature_cols[i] for i in top_indices],
+                                '重要性得分': [feature_importance[i] for i in top_indices],
+                                '相对重要性%': [feature_importance[i]/feature_importance.sum()*100 for i in top_indices]
+                            })
+                            st.dataframe(importance_df, use_container_width=True)
+                        
+                        # 4. SHAP可解释性分析
+                        st.markdown("### 🔍 SHAP可解释性分析")
+                        try:
+                            with st.spinner("🔄 计算SHAP值..."):
+                                shap_fig = create_shap_analysis(
+                                    model.model,
+                                    X_test,
+                                    feature_names=feature_cols,
+                                    max_display=20
+                                )
+                                if shap_fig:
+                                    st.pyplot(shap_fig)
+                                    st.caption("📖 SHAP (SHapley Additive exPlanations) 值显示每个特征对预测的贡献")
+                        except Exception as e:
+                            st.info(f"💡 SHAP分析需要更多计算资源。可以在'结果分析'页面查看详细分析。")
+                        
+                        # 5. 模型性能总结
+                        st.markdown("### 📋 模型性能总结")
+                        summary_col1, summary_col2 = st.columns(2)
+                        
+                        with summary_col1:
+                            st.markdown("#### ✅ 模型优势")
+                            if r2 > 0.9:
+                                st.success("🏆 优秀的拟合效果 (R² > 0.9)")
+                            elif r2 > 0.7:
+                                st.info("👍 良好的拟合效果 (R² > 0.7)")
+                            else:
+                                st.warning("⚠️ 拟合效果一般，建议尝试其他模型或特征工程")
+                            
+                            if mape < 10:
+                                st.success("🎯 预测误差较小 (MAPE < 10%)")
+                            elif mape < 20:
+                                st.info("📊 预测误差适中 (MAPE < 20%)")
+                            
+                        with summary_col2:
+                            st.markdown("#### 💡 改进建议")
+                            if r2 < 0.8:
+                                st.markdown("- 尝试其他算法 (XGBoost, LightGBM)")
+                                st.markdown("- 增加训练数据量")
+                                st.markdown("- 进行特征工程")
+                            if feature_importance is not None:
+                                low_importance_count = np.sum(feature_importance < feature_importance.mean() * 0.1)
+                                if low_importance_count > len(feature_cols) * 0.5:
+                                    st.markdown("- 考虑移除低重要性特征")
+                                    st.markdown("- 进行特征选择优化")
+                        
+                        st.success("✅ 训练完成！模型和结果已保存，可在'🔮 性质预测'页面使用该模型。")
                     
                     # 深度学习模型训练
-                    import time
-                    from pymatgen.core import Structure, Lattice
-                    
                     elif model_choice == "CGCNN":
                         # 为 CGCNN 创建简化的示例结构数据
+                        from pymatgen.core import Lattice, Structure
                         st.write("🧪 准备晶体结构数据...")
                         
                         # 创建简单的测试结构（立方结构）
@@ -771,7 +885,7 @@ elif page == "🤖 模型训练":
                             epochs=min(epochs, 30),  # 限制演示轮数
                             lr=learning_rate
                         )
-                        
+                    
                     elif model_choice == "MOFormer":
                         # 为 MOFormer 准备文本数据
                         st.write("📝 准备 MOFid/SMILES 数据...")
@@ -811,8 +925,8 @@ elif page == "🤖 模型训练":
                         st.info("⚠️ 集成模型训练需要同时准备结构和文本数据，当前为演示模式")
                         history = {'train_loss': [1.0, 0.8, 0.6], 'val_loss': [1.1, 0.9, 0.7]}
                     
-                    progress_bar.progress(100)
-                    st.write("✅ 训练完成！")
+                        progress_bar.progress(100)
+                        st.write("✅ 训练完成！")
                 
                 # 保存模型到 session_state
                 st.session_state.model = model
@@ -1233,5 +1347,4 @@ st.markdown(
     "</div>",
     unsafe_allow_html=True
 )
-
 

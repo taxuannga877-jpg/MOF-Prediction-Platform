@@ -9,7 +9,10 @@ from .plots import (
     plot_feature_importance,
     plot_error_distribution,
     plot_learning_curve,
-    plot_kfold_results
+    plot_kfold_results,
+    plot_predictions_scatter,
+    plot_residuals,
+    plot_feature_importance_bar
 )
 
 from .interpretability import (
@@ -19,7 +22,8 @@ from .interpretability import (
     plot_shap_force,
     plot_shap_dependence,
     calculate_feature_importance_from_shap,
-    plot_shap_feature_importance
+    plot_shap_feature_importance,
+    create_shap_analysis
 )
 
 from .model_comparison import (
@@ -39,6 +43,9 @@ __all__ = [
     'plot_error_distribution',
     'plot_learning_curve',
     'plot_kfold_results',
+    'plot_predictions_scatter',
+    'plot_residuals',
+    'plot_feature_importance_bar',
     'explain_with_shap',
     'plot_shap_summary',
     'plot_shap_waterfall',
@@ -46,6 +53,7 @@ __all__ = [
     'plot_shap_dependence',
     'calculate_feature_importance_from_shap',
     'plot_shap_feature_importance',
+    'create_shap_analysis',
     'plot_model_comparison',
     'plot_cv_results_comparison',
     'plot_training_time_comparison',

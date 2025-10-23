@@ -502,3 +502,182 @@ def plot_kfold_results(fold_results: List[Dict], save_path: Optional[str] = None
     
     return fig
 
+
+def plot_predictions_scatter(y_true, y_pred, dataset_name='Test Set', save_path: Optional[str] = None):
+    """
+    绘制预测值 vs 真实值的散点图
+    
+    Args:
+        y_true: 真实值
+        y_pred: 预测值
+        dataset_name: 数据集名称
+        save_path: 保存路径
+    
+    Returns:
+        Plotly figure 对象
+    """
+    # 计算评估指标
+    mae = mean_absolute_error(y_true, y_pred)
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    r2 = r2_score(y_true, y_pred)
+    
+    # 创建散点图
+    fig = go.Figure()
+    
+    # 添加散点
+    fig.add_trace(go.Scatter(
+        x=y_true,
+        y=y_pred,
+        mode='markers',
+        marker=dict(
+            size=8,
+            color=np.abs(y_true - y_pred),
+            colorscale='Viridis',
+            showscale=True,
+            colorbar=dict(title='绝对误差'),
+            line=dict(width=0.5, color='white')
+        ),
+        name='预测点',
+        text=[f'真实: {t:.2f}<br>预测: {p:.2f}<br>误差: {abs(t-p):.2f}' 
+              for t, p in zip(y_true, y_pred)],
+        hovertemplate='%{text}<extra></extra>'
+    ))
+    
+    # 添加理想线 y=x
+    min_val = min(y_true.min(), y_pred.min())
+    max_val = max(y_true.max(), y_pred.max())
+    fig.add_trace(go.Scatter(
+        x=[min_val, max_val],
+        y=[min_val, max_val],
+        mode='lines',
+        line=dict(color='red', width=2, dash='dash'),
+        name='理想预测线 (y=x)'
+    ))
+    
+    fig.update_layout(
+        title=f'{dataset_name} - 预测 vs 真实值<br><sub>MAE: {mae:.4f} | RMSE: {rmse:.4f} | R²: {r2:.4f}</sub>',
+        xaxis_title='真实值',
+        yaxis_title='预测值',
+        height=500,
+        width=600,
+        hovermode='closest',
+        showlegend=True
+    )
+    
+    if save_path:
+        fig.write_html(save_path)
+    
+    return fig
+
+
+def plot_residuals(y_true, y_pred, save_path: Optional[str] = None):
+    """
+    绘制残差图
+    
+    Args:
+        y_true: 真实值
+        y_pred: 预测值
+        save_path: 保存路径
+    
+    Returns:
+        Plotly figure 对象
+    """
+    residuals = y_true - y_pred
+    
+    fig = go.Figure()
+    
+    # 残差散点图
+    fig.add_trace(go.Scatter(
+        x=y_pred,
+        y=residuals,
+        mode='markers',
+        marker=dict(
+            size=8,
+            color=np.abs(residuals),
+            colorscale='RdYlGn_r',
+            showscale=True,
+            colorbar=dict(title='|残差|'),
+            line=dict(width=0.5, color='white')
+        ),
+        name='残差',
+        text=[f'预测: {p:.2f}<br>残差: {r:.2f}' for p, r in zip(y_pred, residuals)],
+        hovertemplate='%{text}<extra></extra>'
+    ))
+    
+    # 零线
+    fig.add_hline(y=0, line_dash="dash", line_color="red", line_width=2)
+    
+    # 添加±2σ参考线
+    std = np.std(residuals)
+    fig.add_hline(y=2*std, line_dash="dot", line_color="orange", 
+                  annotation_text=f"+2σ ({2*std:.2f})")
+    fig.add_hline(y=-2*std, line_dash="dot", line_color="orange",
+                  annotation_text=f"-2σ ({-2*std:.2f})")
+    
+    fig.update_layout(
+        title=f'残差分析<br><sub>均值: {np.mean(residuals):.4f} | 标准差: {std:.4f}</sub>',
+        xaxis_title='预测值',
+        yaxis_title='残差 (真实值 - 预测值)',
+        height=500,
+        width=600,
+        hovermode='closest'
+    )
+    
+    if save_path:
+        fig.write_html(save_path)
+    
+    return fig
+
+
+def plot_feature_importance_bar(importance, feature_names, top_k=20, save_path: Optional[str] = None):
+    """
+    绘制特征重要性条形图
+    
+    Args:
+        importance: 特征重要性数组
+        feature_names: 特征名称列表
+        top_k: 显示前k个特征
+        save_path: 保存路径
+    
+    Returns:
+        Plotly figure 对象
+    """
+    # 创建DataFrame并排序
+    importance_df = pd.DataFrame({
+        'feature': feature_names,
+        'importance': importance
+    }).sort_values('importance', ascending=False)
+    
+    # 取前k个
+    top_features = importance_df.head(top_k)
+    
+    fig = go.Figure()
+    
+    fig.add_trace(go.Bar(
+        x=top_features['importance'].values,
+        y=top_features['feature'].values,
+        orientation='h',
+        marker=dict(
+            color=top_features['importance'].values,
+            colorscale='Viridis',
+            showscale=True,
+            colorbar=dict(title="重要性")
+        ),
+        text=[f'{v:.4f}' for v in top_features['importance'].values],
+        textposition='auto',
+    ))
+    
+    fig.update_layout(
+        title=f'Top {top_k} 特征重要性',
+        xaxis_title='重要性得分',
+        yaxis_title='特征名称',
+        height=max(400, top_k * 25),
+        yaxis=dict(autorange="reversed"),
+        showlegend=False
+    )
+    
+    if save_path:
+        fig.write_html(save_path)
+    
+    return fig
+
