@@ -4,30 +4,53 @@ Visualization Module
 """
 
 from .plots import (
-    plot_prediction_scatter,
-    plot_residuals,
-    plot_feature_importance,
     plot_training_history,
-    plot_correlation_matrix,
-    plot_distribution,
+    plot_predictions,
+    plot_feature_importance,
+    plot_error_distribution,
+    plot_learning_curve,
+    plot_kfold_results
 )
 
 from .interpretability import (
-    analyze_shap_values,
+    explain_with_shap,
     plot_shap_summary,
-    plot_attention_weights,
+    plot_shap_waterfall,
+    plot_shap_force,
+    plot_shap_dependence,
+    calculate_feature_importance_from_shap,
+    plot_shap_feature_importance
+)
+
+from .model_comparison import (
+    plot_model_comparison,
+    plot_cv_results_comparison,
+    plot_training_time_comparison,
+    plot_prediction_scatter_comparison,
+    create_model_ranking_table,
+    plot_ensemble_weights,
+    plot_feature_importance_comparison
 )
 
 __all__ = [
-    'plot_prediction_scatter',
-    'plot_residuals',
-    'plot_feature_importance',
     'plot_training_history',
-    'plot_correlation_matrix',
-    'plot_distribution',
-    'analyze_shap_values',
+    'plot_predictions',
+    'plot_feature_importance',
+    'plot_error_distribution',
+    'plot_learning_curve',
+    'plot_kfold_results',
+    'explain_with_shap',
     'plot_shap_summary',
-    'plot_attention_weights',
+    'plot_shap_waterfall',
+    'plot_shap_force',
+    'plot_shap_dependence',
+    'calculate_feature_importance_from_shap',
+    'plot_shap_feature_importance',
+    'plot_model_comparison',
+    'plot_cv_results_comparison',
+    'plot_training_time_comparison',
+    'plot_prediction_scatter_comparison',
+    'create_model_ranking_table',
+    'plot_ensemble_weights',
+    'plot_feature_importance_comparison'
 ]
-
-

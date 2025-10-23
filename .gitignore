@@ -25,9 +25,10 @@ MANIFEST
 venv/
 env/
 ENV/
-.venv
+env.bak/
+venv.bak/
 
-# IDE
+# IDEs
 .vscode/
 .idea/
 *.swp
@@ -37,35 +38,63 @@ ENV/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb
 
-# pytest
+# Testing
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.hypothesis/
 
 # Logs
-logs/
 *.log
+logs/
+*.out
+
+# Data files (optional - uncomment if you don't want to track large data)
+# data/qmof/
+# data/uploads/
+# *.cif
+# *.json
+# *.csv
+
+# Model checkpoints (can be large)
+models/checkpoints/*.pth
+models/checkpoints/*.pt
+*.ckpt
+
+# Streamlit
+.streamlit/
 
 # Environment variables
 .env
 .env.local
 
-# Models (uncomment if model files are too large)
-# models/*.pt
-# models/*.pth
-# models/*.pkl
-
-# Data (QMOF database and processed files - too large for git)
-data/raw/
-data/processed/
-*.cif
-*.csv
-*.pkl
-*.h5
-*.hdf5
+# OS
+Thumbs.db
+.DS_Store
 
 # Temporary files
+tmp/
+temp/
 *.tmp
-*.bak
 
+# Python cache
+.pyc
+*.pyo
+*.pyd
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pytest
+.pytest_cache/
+
+# Distribution / packaging
+*.egg
+*.egg-info/
+dist/
+build/

@@ -17,6 +17,9 @@ ase>=3.22.0
 # Machine Learning
 scikit-learn>=1.0.0
 xgboost>=1.5.0
+lightgbm>=3.3.0
+catboost>=1.0.0
+optuna>=3.0.0
 
 # Web Framework
 streamlit>=1.28.0

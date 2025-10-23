@@ -82,12 +82,12 @@ class DataProcessor:
         theory_level: str = 'pbe'
     ) -> Tuple[List[str], List[float]]:
         """
-        从QMOF数据中提取指定属性
+        从QMOF数据中提取指定属性（支持任意列名）
         
         Args:
             data: QMOF数据
-            property_name: 属性名称（如'bandgap'）
-            theory_level: 理论水平（'pbe', 'hle17', 'hse06'等）
+            property_name: 属性名称（可以是完整的列名，如'outputs.pbe.bandgap'，也可以是简短名称如'bandgap'）
+            theory_level: 理论水平（'pbe', 'hle17', 'hse06'等）- 仅在使用简短名称时有效
             
         Returns:
             (MOF ID列表, 属性值列表)元组
@@ -116,18 +116,69 @@ class DataProcessor:
                     continue
         
         elif isinstance(data, pd.DataFrame):
-            # CSV格式
-            col_name = f'outputs.{theory_level}.{property_name}'
-            if col_name in data.columns:
-                mask = data[col_name].notna()
-                ids = data.loc[mask, 'qmof_id'].tolist()
-                values = data.loc[mask, col_name].tolist()
-            elif property_name in data.columns:
+            # 🔥 智能处理任意列名
+            # 1. 首先直接检查是否存在该列名（用户可能直接提供完整列名）
+            if property_name in data.columns:
                 mask = data[property_name].notna()
                 ids = data.loc[mask, 'qmof_id'].tolist() if 'qmof_id' in data.columns else data.index.tolist()
                 values = data.loc[mask, property_name].tolist()
+            # 2. 如果不存在，尝试拼接 theory_level（向后兼容）
+            else:
+                col_name = f'outputs.{theory_level}.{property_name}'
+                if col_name in data.columns:
+                    mask = data[col_name].notna()
+                    ids = data.loc[mask, 'qmof_id'].tolist() if 'qmof_id' in data.columns else data.index.tolist()
+                    values = data.loc[mask, col_name].tolist()
+                else:
+                    # 如果都找不到，返回空列表（不报错，让调用者处理）
+                    pass
         
         return ids, values
+    
+    def extract_features_and_target(
+        self,
+        data: pd.DataFrame,
+        target_column: str,
+        feature_columns: List[str] = None,
+        auto_select_numeric: bool = True
+    ) -> Tuple[pd.DataFrame, pd.Series]:
+        """
+        🔥 新方法：从DataFrame中提取特征和目标（支持任意列名）
+        
+        Args:
+            data: 输入DataFrame
+            target_column: 目标列名（用户选择的任意列）
+            feature_columns: 特征列名列表（可选）
+            auto_select_numeric: 如果feature_columns为None，是否自动选择所有数值列作为特征
+            
+        Returns:
+            (特征DataFrame, 目标Series)元组
+        """
+        if target_column not in data.columns:
+            raise ValueError(f"目标列 '{target_column}' 不存在于数据中")
+        
+        # 获取目标
+        y = data[target_column].copy()
+        
+        # 确定特征列
+        if feature_columns is None:
+            if auto_select_numeric:
+                # 自动选择所有数值列，排除目标列
+                numeric_cols = data.select_dtypes(include=[np.number]).columns.tolist()
+                feature_columns = [col for col in numeric_cols if col != target_column]
+            else:
+                # 使用除目标列外的所有列
+                feature_columns = [col for col in data.columns if col != target_column]
+        
+        # 获取特征
+        X = data[feature_columns].copy()
+        
+        # 只保留数值型特征
+        X = X.select_dtypes(include=[np.number])
+        
+        self.feature_names = list(X.columns)
+        
+        return X, y
     
     def normalize_features(
         self,
